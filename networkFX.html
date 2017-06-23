@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    #header {
+        background-color:black;
+        color:white;
+        text-align:center;
+        padding:5px;
+    }
+    h5{color:red}
+    #nav {
+        line-height:30px;
+        background-color:transparent;
+        height:100px;
+        width:200px;
+        left:100px;
+        top:100px;
+        position:fixed;
+        padding:5px;
+    }
+    #hello {
+        line-height:30px;
+        background-color:transparent;
+        height:100px;
+        width:800px;
+        left:400px;
+        top:20px;
+        position:fixed;
+        padding:5px;
+    }
+    #section {
+        width:350px;
+        float:left;
+        padding:10px;
+    }
+    #footer {
+        background-color:black;
+        color:white;
+        clear:both;
+        text-align:center;
+        padding:5px;
+    }
+</style>
+<style>
+
+    .node {
+        stroke: #fff;
+        stroke-width: 1.5px;
+    }
+
+    .link {
+        stroke: #999;
+        stroke-opacity: .6;
+    }
+
+    .node text { font:8px arial;
+    }
+
+
+
+</style>
+
+<body>
+<script src="d3.min.js"></script>
+
+
+<script>
+
+    var width = 1000,
+            height = 1000;
+
+	var color = d3.scaleOrdinal(d3.schemeCategory20);
+		//	.domain(["Bank","FI","Corporate/Individual","Others"]).range([red,green,blue,yellow]);
+
+    var force = d3.layout.force()
+            .charge(10)
+			.gravity(1)
+			.linkDistance(500)
+            .size([width, height-200]);
+
+    var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+
+    d3.json("FX.json", function(error, graph) {
+        if (error) throw error;
+
+
+        var edges = [];
+        graph.links.forEach(function(e) {
+            var sourceNode = graph.nodes.filter(function(n) {
+                        return n.name === e.source;
+                    })[0],
+                    targetNode = graph.nodes.filter(function(n) {
+                        return n.name === e.target;
+                    })[0];
+
+            edges.push({
+                source: sourceNode,
+                target: targetNode,
+                value: e.value
+            });
+        });
+
+        force
+                .nodes(graph.nodes)
+                .links(edges)
+                .start();
+
+
+        var link = svg.selectAll(".link")
+                .data(edges)
+                .enter().append("line")
+                .attr("class", "link")
+                .style("stroke-width", function(d) { return d.value ; });
+
+
+        var node = svg.selectAll(".node")
+                .data(graph.nodes)
+                .enter().append("g")
+                .attr("class", "node")
+                .call(force.drag)
+                .on('dblclick', connectedNodes);
+
+            node.append("circle")
+                .attr("r", function(d) {return 5+d.notional*150;})
+                .style("fill", function(d) { return color(d.group); });
+
+            node.append("text")
+                .attr("dx",10)
+                .attr("dy",".35em")
+				.style("font-size",15)
+				.style("font", "Calibri")
+                .text(function(d) { return d.name; })
+                .style ("opacity",  0)
+                .style("stroke","black");
+
+
+        force.on("tick", function() {
+            link.attr("x1", function (d) {
+                return d.source.x;
+            })
+                    .attr("y1", function (d) {
+                        return d.source.y;
+                    })
+                    .attr("x2", function (d) {
+                        return d.target.x;
+                    })
+                    .attr("y2", function (d) {
+                        return d.target.y;
+                    });
+
+            d3.selectAll("circle").attr("cx", function (d) {
+                return d.x;
+            })
+                    .attr("cy", function (d) {
+                        return d.y;
+                    });
+
+            d3.selectAll("text").attr("x", function (d) {
+                return d.x;
+            })
+                    .attr("y", function (d) {
+                        return d.y;
+                    });
+        });
+
+
+        //Toggle stores whether the highlighting is on
+        var toggle = 0;
+//Create an array logging what is connected to what
+        var linkedByIndex = {};
+        for (i = 0; i < graph.nodes.length; i++) {
+            linkedByIndex[i + "," + i] = 1;
+        };
+        graph.links.forEach(function (d) {
+            linkedByIndex[d.source.index + "," + d.target.index] = 1;
+        });
+//This function looks up whether a pair are neighbours
+        function neighboring(a, b) {
+            return linkedByIndex[a.index + "," + b.index];
+        }
+        function connectedNodes() {
+            if (toggle == 0) {
+                //Reduce the opacity of all but the neighbouring nodes
+                d = d3.select(this).node().__data__;
+                node.style("opacity", function (o) {
+                    return neighboring(d, o) | neighboring(o, d) ? 1 : 0.1;
+                });
+                link.style("opacity", function (o) {
+                    return d.index==o.source.index | d.index==o.target.index ? 1 : 0.1;
+                });
+                //Reduce the op
+                toggle = 1;
+            } else {
+                //Put them back to opacity=1
+                node.style("opacity", 1);
+                link.style("opacity", 1);
+                toggle = 0;
+            }
+        }
+
+
+    });
+
+</script>
+
+<div id="nav">
+    <font color="red"; >&#9899</font> <font size="4px";font face="arial">Bank</font><br>
+    <font color="blue">&#9899</font> <font size="4px";font face="arial">Non-FI</font><br>
+        <font color="green">&#9899</font> <font size="4px";font face="arial">FI</font><br>
+		<font color="yellow">&#9899</font> <font size="4px";font face="arial">Others</font>
+</div>
+
+<div id="hello"><font size="5px";font face="arial"<b><u>Over-the-Counter Derivatives Network</u></b></u></b></font></div>
+
+
+</div>
+
